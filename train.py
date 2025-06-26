@@ -153,6 +153,85 @@ def train_model(model, X_train, y_train, is_train=True):
         run_uri = f'runs:/{run.info.run_id}'
         mlflow.register_model(run_uri, 'fetal_health')
 
+def reset_seeds():
+    os.environ['PYTHONHASHSEED'] = str(42)
+    tf.random.set_seed(42)
+    np.random.seed(42)
+    random.seed(42)
+
+
+def read_data(csv_path=None):
+    if csv_path is None:
+        csv_path = "https://raw.githubusercontent.com/renansantosmendes/lectures-cdas-2023/master/fetal_health_reduced.csv"
+    data = pd.read_csv(csv_path)
+    X = data.drop(["fetal_health"], axis=1)
+    y = data["fetal_health"]
+    return X, y
+
+
+def process_data(X, y):
+    scaler = preprocessing.StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
+
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
+
+    y_train -= 1
+    y_test -= 1
+
+    return X_train, X_test, y_train, y_test
+
+
+def create_model(X):
+    reset_seeds()
+    model = Sequential([
+        InputLayer(input_shape=(X.shape[1],)),
+        Dense(10, activation='relu'),
+        Dense(10, activation='relu'),
+        Dense(3, activation='softmax')
+    ])
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
+
+
+def get_callbacks():
+    return [
+        EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
+        ModelCheckpoint(filepath='best_model.h5', save_best_only=True, monitor='val_loss')
+    ]
+
+
+def train_model(model, X_train, y_train, is_train=True):
+    import mlflow  # evitar import circular com mlflow_utils
+
+    with mlflow.start_run(run_name="experiment_mlops_ead") as run:
+        model.fit(
+            X_train,
+            y_train,
+            epochs=50,
+            validation_split=0.2,
+            callbacks=get_callbacks(),
+            verbose=2
+        )
+
+        if is_train:
+            from mlflow_utils import register_model
+            register_model(run.info.run_id)
+
+        return model, run
+
+
+def evaluate_model(model, X_test, y_test):
+    import mlflow
+    loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+    print(f"Test Loss: {loss:.4f}")
+    print(f"Test Accuracy: {accuracy:.4f}")
+    mlflow.log_metric("test_loss", loss)
+    mlflow.log_metric("test_accuracy", accuracy)
+
+
 
 if __name__ == "__main__":
     X, y = read_data()
