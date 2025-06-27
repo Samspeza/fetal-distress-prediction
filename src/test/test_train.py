@@ -3,7 +3,7 @@ import pytest
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import to_categorical
 
-from train import (
+from test.train import (
     read_data,
     create_model,
     train_model

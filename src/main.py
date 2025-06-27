@@ -1,4 +1,4 @@
-from train import (
+from test.train import (
     read_data,
     process_data,
     create_model,
