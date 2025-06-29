@@ -1,0 +1,8 @@
+data:
+  csv_url: "https://raw.githubusercontent.com/..."
+  test_size: 0.3
+  seed: 42
+
+mlflow:
+  tracking_uri: "https://dagshub.com/..."
+  model_name: "fetal_health"
